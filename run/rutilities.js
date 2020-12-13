@@ -1,0 +1,2675 @@
+/*@*****************************************************************************
+*                                                                              *
+*   █████╗  ██████╗ ███████╗    ███████╗████████╗██╗   ██╗██████╗ ██╗ ██████╗  *
+*  ██╔══██╗██╔═══██╗╚══███╔╝    ██╔════╝╚══██╔══╝██║   ██║██╔══██╗██║██╔═══██╗ *
+*  ███████║██║   ██║  ███╔╝     ███████╗   ██║   ██║   ██║██║  ██║██║██║   ██║ *
+*  ██╔══██║██║   ██║ ███╔╝      ╚════██║   ██║   ██║   ██║██║  ██║██║██║   ██║ *
+*  ██║  ██║╚██████╔╝███████╗    ███████║   ██║   ╚██████╔╝██████╔╝██║╚██████╔╝ *
+*  ╚═╝  ╚═╝ ╚═════╝ ╚══════╝    ╚══════╝   ╚═╝    ╚═════╝ ╚═════╝ ╚═╝ ╚═════╝  *
+*                                                                              *
+* This file is part of AOZ Studio.                                             *
+* Copyright (c) AOZ Studio. All rights reserved.                               *
+*                                                                              *
+* Licensed under the GNU General Public License v3.0.                          *
+* More info at: https://choosealicense.com/licenses/gpl-3.0/                   *
+* And in the file AOZ_StudioCodeLicense.pdf.                                   *
+*                                                                              *
+*****************************************************************************@*/
+/** @file
+ *
+ * AOZ Runtime
+ *
+ * Various utilities
+ *
+ * @author FL (Francois Lionet)
+ * @date first pushed on 03/12/2018
+ */
+function Utilities( aoz )
+{
+	this.aoz = aoz;
+}
+
+Utilities.prototype.getBrowserLanguage = function()
+{
+	lang = window.navigator.languages ? window.navigator.languages[0] : null;
+	lang = lang || window.navigator.language || window.navigator.browserLanguage || window.navigator.userLanguage;
+
+	let shortLang = lang;
+	if (shortLang.indexOf('-') !== -1)
+		shortLang = shortLang.split('-')[0];
+
+	if (shortLang.indexOf('_') !== -1)
+		shortLang = shortLang.split('_')[0];
+
+	return shortLang.toLowerCase();
+};
+Utilities.prototype.getUniqueIdentifier = function( root )
+{
+	root = typeof root != 'undefined' ? root : 'ID_';
+	root += Math.random() * 10000000 + '-' + new Date().now;
+	return root;
+}
+// Make the system thread-safe, for the moment one identifier per root.
+Utilities.prototype.getUniqueIdentifierOnce = function( root )
+{
+	if ( this.uniqueIdentifiersOnce[ root ] )
+	{
+		return this.uniqueIdentifiersOnce[ root ];
+	}
+	var identifier = this.getUniqueIdentifier( root );
+	this.uniqueIdentifiersOnce[ root ] = identifier;
+	return identifier;
+}
+Utilities.prototype.resetUniqueIdentifierOnce = function( root )
+{
+	if ( this.uniqueIdentifiersOnce[ root ] )
+	{
+		this.uniqueIdentifiersOnce = this.cleanObject( this.uniqueIdentifiersOnce, this.uniqueIdentifiersOnce[ root ] );
+		return true;
+	}
+	return false;
+}
+Utilities.prototype.sendCrashMail = function()
+{
+	if ( this.aoz.crashInfo )
+	{
+		var body = '\r\n\r\n';
+		body += 'application: ' + this.aoz.manifest.infos.applicationName + '\r\n';
+		body += 'date: ' + this.getFormattedDate() + '\r\n';
+		body += 'source position: ' + this.aoz.sourcePos + '\r\n';
+		body += 'message: ' + this.aoz.crash.error.message + '\r\n';
+		body += 'stack: ' + this.aoz.crash.error.stack + '\r\n';
+		body += '\r\n\r\n\r\n\r\n';
+
+		var subject = 'AOZ Studio Runtime Crash Report';
+		this.sendMail( 'crash@aoz.studio', subject, body );
+	}
+};
+Utilities.prototype.sendMail = function( to, subject, body )
+{
+	var message = encodeURI( "mailto:" + to + "?subject=" + subject + "&body=" + body )
+    window.open( message );
+};
+Utilities.prototype.getFormattedDate = function()
+{
+    var date = new Date();
+
+    var month = date.getMonth() + 1;
+    var day = date.getDate();
+    var hour = date.getHours();
+    var min = date.getMinutes();
+    var sec = date.getSeconds();
+
+    month = (month < 10 ? "0" : "") + month;
+    day = (day < 10 ? "0" : "") + day;
+    hour = (hour < 10 ? "0" : "") + hour;
+    min = (min < 10 ? "0" : "") + min;
+    sec = (sec < 10 ? "0" : "") + sec;
+
+    var str = day + '/' + month + '/' + date.getFullYear() + "-" + hour + ":" + min + ":" + sec;
+
+    return str;
+};
+
+Utilities.prototype.rotate = function( x, y, cx, cy, angle )
+{
+	var cos = Math.cos( angle );
+	var sin = Math.sin( angle );
+	var nx = (cos * (x - cx)) - (sin * (y - cy)) + cx;
+	var ny = (cos * (y - cy)) + (sin * (x - cx)) + cy;
+	return { x: nx, y: ny };
+};
+Utilities.prototype.rotatePoint = function( point, center, angle )
+{
+	var cos = Math.cos( angle );
+	var sin = Math.sin( angle );
+	point.x = ( cos * ( point.x - center.x ) ) - ( sin * ( point.y - center.y ) ) + center.x;
+	point.y = ( cos * ( point.y - center.y ) ) + ( sin * ( point.x - center.x ) ) + center.y;
+};
+Utilities.prototype.rotateCollisionRectangle = function( rectangle, center, angle )
+{
+	var cos = Math.cos( angle );
+	var sin = Math.sin( angle );
+	var x1 = ( cos * ( rectangle.x1 - center.x ) ) - ( sin * ( rectangle.y1 - center.y ) ) + center.x;
+	var y1 =  ( cos * ( rectangle.y1 - center.y ) ) + ( sin * ( rectangle.x1 - center.x ) ) + center.y;
+	var x2 = ( cos * ( rectangle.x2 - center.x ) ) - ( sin * ( rectangle.y1 - center.y ) ) + center.x;
+	var y2 =  ( cos * ( rectangle.y1 - center.y ) ) + ( sin * ( rectangle.x2 - center.x ) ) + center.y;
+	var x3 = ( cos * ( rectangle.x2 - center.x ) ) - ( sin * ( rectangle.y2 - center.y ) ) + center.x;
+	var y3 =  ( cos * ( rectangle.y2 - center.y ) ) + ( sin * ( rectangle.x2 - center.x ) ) + center.y;
+	var x4 = ( cos * ( rectangle.x1 - center.x ) ) - ( sin * ( rectangle.y2 - center.y ) ) + center.x;
+	var y4 =  ( cos * ( rectangle.y2 - center.y ) ) + ( sin * ( rectangle.x1 - center.x ) ) + center.y;
+	rectangle.x1 = Math.min( x1, Math.min( x2, Math.min( x3, x4 ) ) );
+	rectangle.x2 = Math.max( x1, Math.max( x2, Math.max( x3, x4 ) ) );
+	rectangle.y1 = Math.min( y1, Math.min( y2, Math.min( y3, y4 ) ) );
+	rectangle.y2 = Math.max( y1, Math.max( y2, Math.max( y3, y4 ) ) );
+};
+
+Utilities.prototype.slice = function( arr, position, length )
+{
+	var result = [];
+	length = typeof length != 'undefined' ? length : 1;
+	for ( var p = 0; p < arr.length; p++ )
+	{
+		if ( p < position || p >= position + length )
+		{
+			result.push( arr[ p ] );
+		}
+	}
+	return result;
+};
+
+Utilities.prototype.trimString = function( str, position )
+{
+	var start = 0;
+	position = typeof position == 'undefined' ? { left: true, right: true } : position;
+	if ( position.left )
+	{
+		while( start < str.length && ( str.charCodeAt( start ) == 32 || str.charCodeAt( start ) == 9 || str.charCodeAt( start ) == 10 || str.charCodeAt( start ) == 13 ) )
+			start++;
+	}
+	var end = str.length;
+	if ( position.right )
+	{
+		while( end > 0 && ( str.charCodeAt( end - 1 ) == 32 || str.charCodeAt( end - 1 ) == 9 || str.charCodeAt( end - 1 ) == 10 || str.charCodeAt( end - 1 ) == 13 ) )
+			end--;
+	}
+	if ( end > start )
+		return str.substring( start, end );
+	return '';
+}
+
+Utilities.AOZTEMP_position;
+Utilities.AOZTEMPRETURN_end_position;
+Utilities.prototype.extractFromString = function( text, start, type, throwError, options )
+{
+	Utilities.AOZTEMP_position = start;
+	switch ( type )
+	{
+		case 'string':
+			var result = this.extractString( text, Utilities.AOZTEMP_position, options );
+			if ( !result && throwError )
+				throw { error: throwError, parameter: text };
+			return result;
+		case 'word':
+			var result = this.extractWord( text, Utilities.AOZTEMP_position, options );
+			if ( !result && throwError )
+				throw { error: throwError, parameter: text };
+			return result;
+		case 'integer':
+			var result = this.extractNumber( text, Utilities.AOZTEMP_position, options );
+			if ( result.type != type && throwError )
+				throw { error: throwError, parameter: text };
+			return result.integer;
+		case 'float':
+			var result = this.extractNumber( text, Utilities.AOZTEMP_position, options );
+			if ( result.type != type && throwError )
+				throw { error: throwError, parameter: text };
+			return result.float;
+		case 'character':
+			return this.extractCharacter( text, Utilities.AOZTEMP_position, options );
+		default:
+			throw 'internal_error';
+	}
+};
+Utilities.prototype.getFromString = function( text, start, type, options )
+{
+	var savePosition = Utilities.AOZTEMP_position;
+	Utilities.AOZTEMP_position = start;
+	switch ( type )
+	{
+		case 'string':
+			result = this.extractString( text, Utilities.AOZTEMP_position, options );
+			break;
+		case 'word':
+			var result = this.extractWord( text, Utilities.AOZTEMP_position, options );
+			break;
+		case 'integer':
+			result = this.extractNumber( text, Utilities.AOZTEMP_position, options ).integer;
+			break
+		case 'float':
+			result = this.extractNumber( text, Utilities.AOZTEMP_position, options ).float;
+			break;
+		case 'character':
+			result = this.extractCharacter( text, Utilities.AOZTEMP_position, options );
+			break;
+		default:
+			throw 'internal_error';
+	}
+	Utilities.AOZTEMP_position = savePosition;
+	return result;
+};
+Utilities.prototype.skipTheSpaces = function( text, start )
+{
+	Utilities.AOZTEMP_position = start;
+	while ( ( text.charAt( start ) == ' ' || text.charAt( start ) == '\t' ) && start < text.length )
+		start++;
+	Utilities.AOZTEMPRETURN_end_position = Utilities.AOZTEMP_position;
+	Utilities.AOZTEMP_position = start;
+};
+Utilities.prototype.extractCharacter = function( text, start )
+{
+	this.skipTheSpaces( text, start );
+
+	var result = undefined;
+	if ( Utilities.AOZTEMP_position < text.length )
+		result = text.charAt( Utilities.AOZTEMP_position++ );
+
+	Utilities.AOZTEMPRETURN_end_position = Utilities.AOZTEMP_position;
+	return result;
+};
+Utilities.prototype.extractString = function( text, start )
+{
+	this.skipTheSpaces( text, start );
+
+	var result = undefined;
+	var quote = text.charAt( Utilities.AOZTEMP_position );
+	if ( quote == '"' || quote == "'" )
+	{
+		result = '';
+		Utilities.AOZTEMP_position++;
+		while( Utilities.AOZTEMP_position < text.length )
+		{
+			var c = text.charAt( Utilities.AOZTEMP_position++ );
+			if ( c == quote )
+				break;
+			result += c;
+		}
+	}
+	Utilities.AOZTEMPRETURN_end_position = Utilities.AOZTEMP_position;
+	return result;
+};
+Utilities.prototype.extractWord = function( text, start, options )
+{
+	var result = '';
+	options = typeof options == 'undefined' ? {} : options;
+	while( start < text.length )
+	{
+		var c = text.charAt( module.exports.AOZTEMP_position++ );
+		if ( this.getCharacterType( c ) != 'letter' )
+		{
+			if ( options.acceptedCharacters )
+			{
+				if ( options.acceptedCharacters.indexOf( c ) < 0 )
+					break;
+			}
+			else
+			{
+			break;
+			}
+		}
+		result += c;
+	}
+	module.exports.AOZTEMPRETURN_end_position = module.exports.AOZTEMP_position;
+	return result;
+};
+Utilities.prototype.extractNumber = function( line, start )
+{
+	this.skipTheSpaces( line, start );
+
+	var result =
+	{
+		text: "",
+		float: NaN,
+		integer: NaN,
+		type: 'nan',
+		endPosition: 0
+	}
+	var c = line.charAt( Utilities.AOZTEMP_position );
+	if ( c == '-' )
+	{
+		Utilities.AOZTEMP_position++;
+		result.text += '-';
+		c = line.charAt( Utilities.AOZTEMP_position );
+	}
+	if ( this.getCharacterType( c ) == 'number' )
+	{
+		Utilities.AOZTEMP_position++;
+		result.text += c;
+		result.type = 'integer';
+		while( Utilities.AOZTEMP_position < line.length )
+		{
+			c = line.charAt( Utilities.AOZTEMP_position );
+			if ( !( ( c >= '0' && c <= '9' ) || c == '.' ) )
+				break;
+			result.text += c;
+			if ( c == '.' )
+				result.type = 'float';
+			Utilities.AOZTEMP_position++;
+		}
+		if ( result.type == 'float' )
+		{
+			result.float = parseFloat( result.text );
+			result.integer = this.aoz.fp2Int( result.float ); // BJF
+		}
+		else
+		{
+			result.integer = parseInt( result.text );
+			result.float = result.integer;
+		}
+	}
+	result.endPosition = Utilities.AOZTEMP_position;
+
+	Utilities.AOZTEMPRETURN_end_position = Utilities.AOZTEMP_position;
+	return result;
+}; // extractNumber(line,start)
+
+Utilities.prototype.getFontString = function( name, height, weight, italic )
+{
+	var font = '';
+	if ( typeof italic != 'undefined' )
+		font += 'italic ';
+	if ( typeof weight != 'undefined' )
+		font += weight + ' ';
+	font += height + 'px ' + name;
+	return font;
+};
+
+Utilities.prototype.getFontStringHeight = function( fontString )
+{
+	var height = 10;
+	var pos = fontString.indexOf( 'px' );
+	if ( pos >= 0 )
+		height = parseInt( fontString.substring( 0, pos ) );
+	return height;
+};
+
+
+Utilities.prototype.getAOZRGB = function( r, g, b, short )
+{
+	a = ( typeof a == 'undefined' ? 255 : 0 );
+	if ( !short )
+		return ( ( r & 0xFF ) << 16 ) | ( ( g & 0xFF ) << 8 ) | ( b & 0xFF );
+	return ( ( r & 0xF ) << 8 ) | ( ( g & 0xF ) << 4 ) | ( b & 0xF );
+};
+Utilities.prototype.getRGBA = function( r, g, b, a, short )
+{
+	a = ( typeof a == 'undefined' ? 255 : 0 );
+	if ( !short )
+		return ( ( r & 0xFF ) << 24 ) | ( ( g & 0xFF ) << 16 ) | ( ( b & 0xFF ) << 8 ) | ( a & 0xFF );
+	return ( ( r & 0xF ) << 12 ) | ( ( g & 0xF ) << 8 ) | ( ( b & 0xF ) << 4 ) | ( a & 0xF );
+};
+Utilities.prototype.getRGBAColors = function( rgba, short )
+{
+	var result;
+
+	if ( !short )
+	{
+		result =
+		{
+			r: ( rgba >> 24 ) & 0xFF,
+			g: ( rgba >> 16 ) & 0xFF,
+			b: ( rgba  >> 8 ) & 0xFF,
+			a: ( rgba & 0xFF )
+		};
+	}
+	else
+	{
+		result =
+		{
+			r: ( rgba >> 12 ) & 0xF,
+			g: ( rgba >> 8 ) & 0xF,
+			b: ( rgba >> 4  ) & 0xF,
+			a: ( rgba & 0xF )
+		};
+	}
+	return result;
+};
+Utilities.prototype.getRGBColors = function( rgb, short )
+{
+	var result;
+
+	if ( !short )
+	{
+		result =
+		{
+			r: ( rgb >> 16 ) & 0xFF,
+			g: ( rgb >> 8  ) & 0xFF,
+			b: ( rgb       ) & 0xFF,
+		};
+	}
+	else
+	{
+		result =
+		{
+			r: ( rgb >> 8 ) & 0xF,
+			g: ( rgb >> 4 ) & 0xF,
+			b: ( rgb      ) & 0xF,
+		};
+	}
+	return result;
+}; // getRBGColors
+
+Utilities.prototype.getRGBAStringColors = function( rgbaString )
+{
+	var result = {};
+	result.r = parseInt( rgbaString.substr( 1, 2 ), 16 );
+	result.g = parseInt( rgbaString.substr( 3, 2 ), 16 );
+	result.b = parseInt( rgbaString.substr( 5, 2 ), 16 );
+	result.a = 255;
+	if ( rgbaString.length == 9 )
+		result.a = parseInt( rgbaString.substr( 7, 2 ), 16 );
+	return result;
+};
+Utilities.prototype.getRGBAString = function( r, g, b, a )
+{
+	var rr = r.toString( 16 );
+	if ( rr.length < 2 ) rr = '0' + rr;
+	var gg = g.toString( 16 );
+	if ( gg.length < 2 ) gg = '0' + gg;
+	var bb = b.toString( 16 );
+	if ( bb.length < 2 ) bb = '0' + bb;
+	var aa = '';
+	if ( typeof a != 'undefined')
+	{
+		aa = a.toString( 16 );
+		if ( aa.length < 2 ) aa = '0' + aa;
+	}
+	return ( '#' + rr + gg + bb + aa ).toUpperCase();
+}
+Utilities.prototype.getModernColorString = function( color, short = false )
+{
+	var colorString = color.toString( 16 );
+	if ( short )
+	{
+		while ( colorString.length < 3 )
+			colorString = '0' + colorString;
+		colorString = colorString.substr( 0, 1 ) + '0' + colorString.substr( 1, 1 ) + '0' + colorString.substr( 2, 1 ) + '0';
+	}
+	else
+	{
+		while ( colorString.length < 6 )
+			colorString = '0' + colorString;
+	}
+	return ( '#' + colorString ).toUpperCase();
+};
+
+
+Utilities.prototype.pokeString = function( str, replacement, position, length  )
+{
+	var result = str.substring( 0, position );
+	if ( length < replacement.length )
+	{
+		result += replacement.substr( 0, length );
+	}
+	else
+	{
+		result += replacement;
+		result += str.substr( position + replacement.length, length - replacement.length );
+	}
+	result += str.substring( position + length );
+	return result;
+};
+Utilities.prototype.getFilename = function( path )
+{
+	var posPoint = path.lastIndexOf( '.' );
+	if ( posPoint < 0 )
+		posPoint = path.length;
+
+	var posSlash1 = path.lastIndexOf( '/' );
+	var posSlash2 = path.lastIndexOf( '\\' );
+	if ( posSlash1 >= 0 && posSlash2 >= 0 )
+		posSlash1 = Math.max( posSlash1, posSlash2 ) + 1;
+	else if ( posSlash1 < 0 && posSlash2 < 0 )
+		posSlash1 = 0;
+	else if ( posSlash1 < 0 )
+		posSlash1 = posSlash2 + 1;
+	else
+		posSlash1++;
+
+	return path.substring( posSlash1, posPoint );
+};
+Utilities.prototype.getFilenameExtension = function( path )
+{
+	var posPoint = path.lastIndexOf( '.' );
+	if ( posPoint < 0 )
+		return '';
+	return path.substring( posPoint + 1 );
+};
+Utilities.prototype.getFilenameAndExtension = function( path )
+{
+	var posSlash1 = path.lastIndexOf( '/' );
+	var posSlash2 = path.lastIndexOf( '\\' );
+	if ( posSlash1 >= 0 && posSlash2 >= 0 )
+		posSlash1 = Math.max( posSlash1, posSlash2 ) + 1;
+	else if ( posSlash1 < 0 && posSlash2 < 0 )
+		posSlash1 = 0;
+	else if ( posSlash1 < 0 )
+		posSlash1 = posSlash2 + 1;
+	else
+		posSlash1++;
+
+	return path.substring( posSlash1 );
+};
+Utilities.prototype.getDir = function( path )
+{
+	var colon = path.indexOf( ':' );
+	if ( colon >= 0 )
+		path = path.substring( colon + 1 );
+	var posSlash1 = path.lastIndexOf( '/' );
+	var posSlash2 = path.lastIndexOf( '\\' );
+	if ( posSlash1 >= 0 && posSlash2 >= 0 )
+		posSlash1 = Math.max( posSlash1, posSlash2 );
+	else if ( posSlash1 < 0 && posSlash2 < 0 )
+		posSlash1 = 0;
+	else if ( posSlash1 < 0 )
+		posSlash1 = posSlash2;
+	return path.substring( 0, posSlash1 );
+};
+Utilities.prototype.convertStringToArrayBuffer = function( str )
+{
+	var lookup = window.base64Lookup;
+	if ( !lookup )
+	{
+		var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+		lookup = new Uint8Array(256);
+		for ( var i = 0; i < chars.length; i++ )
+		{
+			lookup[ chars.charCodeAt( i ) ] = i;
+		}
+		window.base64Lookup = lookup;
+	}
+
+	var bufferLength = str.length * 0.75, len = str.length, i, p = 0, encoded1, encoded2, encoded3, encoded4;
+	if ( str[ str.length - 1 ] === "=")
+	{
+		bufferLength--;
+		if ( str[ str.length - 2 ] === "=")
+		{
+			bufferLength--;
+		}
+	}
+
+	var arraybuffer = new ArrayBuffer( bufferLength ),
+	bytes = new Uint8Array( arraybuffer );
+
+	for ( i = 0; i < len; i += 4 )
+	{
+		encoded1 = lookup[str.charCodeAt(i)];
+		encoded2 = lookup[str.charCodeAt(i+1)];
+		encoded3 = lookup[str.charCodeAt(i+2)];
+		encoded4 = lookup[str.charCodeAt(i+3)];
+
+		bytes[p++] = (encoded1 << 2) | (encoded2 >> 4);
+		bytes[p++] = ((encoded2 & 15) << 4) | (encoded3 >> 2);
+		bytes[p++] = ((encoded3 & 3) << 6) | (encoded4 & 63);
+	}
+	return arraybuffer;
+};
+Utilities.prototype.convertArrayBufferToString = function( arrayBuffer )
+{
+	var chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+	var bytes = new Uint8Array( arrayBuffer ), i, len = bytes.length, base64 = "";
+
+	for (i = 0; i < len; i+=3)
+	{
+		base64 += chars[bytes[i] >> 2];
+		base64 += chars[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+		base64 += chars[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
+		base64 += chars[bytes[i + 2] & 63];
+	}
+
+	if ((len % 3) === 2)
+	{
+		base64 = base64.substring(0, base64.length - 1) + "=";
+	}
+	else if (len % 3 === 1)
+	{
+		base64 = base64.substring(0, base64.length - 2) + "==";
+	}
+	return base64;
+};
+Utilities.prototype.loadArraybuffer = function( path, options, callback, extra )
+{
+	var self = this;
+	fetch( path )
+  		.then( response => response.text() )
+  		.then( ( data ) => {
+			var arrayBuffer = self.convertStringToArrayBuffer( data );
+			callback( true, arrayBuffer, extra );
+		} )
+		.catch( function( error )
+		{
+			callback( false, null, extra );
+		} );
+}
+Utilities.prototype.replaceStringInText = function( text, mark, replacement )
+{
+	var pos = text.indexOf( mark );
+	while( pos >= 0 )
+	{
+		text = text.substring( 0, pos ) + replacement + text.substring( pos + mark.length );
+		pos = text.indexOf( mark );
+	}
+	return text;
+};
+Utilities.prototype.loadScript = function( scripts, options, callback, extra )
+{
+	options = typeof options != 'undefined' ? options : {};
+	timeout = typeof options.timeout != 'undefined' ? options.timeout : 1000 * 10;
+	if ( typeof scripts == 'string' )
+		scripts = [ scripts ];
+
+
+	var loaded = 0;
+	var toLoad = scripts.length;
+	var handle = setTimeout( onTimeout, timeout );
+	for ( var s = 0; s < scripts.length; s++ )
+	{
+		var path = scripts[ s ];
+
+		var element = document.createElement( 'script' );
+		element.onload = onLoad;
+		element.onError = onError;					// Not on all browsers
+		element.src = path;
+		document.head.appendChild( element ); 		// Adds to the document
+		scripts[ s ] = element;
+		function onLoad()
+		{
+			loaded++;
+			if ( loaded == toLoad )
+			{
+				clearTimeout( handle );
+				if ( callback )
+					callback( true, scripts, extra );
+			}
+		};
+		function onError()
+		{
+			clearTimeout( handle );
+			if ( callback )
+				callback( false, scripts, extra );
+		};
+		function onTimeout()
+		{
+			if ( callback )
+				callback( false, scripts, extra );
+		};
+	}
+};
+Utilities.prototype.loadPng = function( path, options, callback, extra )
+{
+	var image = new Image();
+	image.onload = function()
+	{
+		callback( true, this, extra );
+	};
+	image.src = path;
+};
+Utilities.prototype.loadImages = function( images, options, callback, extra )
+{
+	options = typeof options != 'undefined' ? options : {};
+	timeout = typeof options.timeout != 'undefined' ? options.timeout : 1000 * 10;
+	if ( typeof images == 'string' )
+		images = [ images ];
+
+	var loaded = 0;
+	var toLoad = images.length;
+	var loadedImages = {};
+	for ( var s = 0; s < images.length; s++ )
+	{
+		var path = images[ s ];
+
+		var i = new Image();
+		i.__name = this.getFilename( path );
+		i.onload = function()
+		{
+			loaded++;
+			loadedImages[ this.__name ] = this;
+			if ( loaded == toLoad )
+			{
+				clearTimeout( handle );
+				if ( callback )
+					callback( true, loadedImages, extra );
+			}
+		};
+		i.onerror = function()
+		{
+			clearTimeout( handle );
+			if ( callback )
+				callback( false, null, { error: 'load_error' } );
+		};
+		i.src = path;
+	}
+	var handle = setTimeout( onTimeout, timeout );
+	function onTimeout()
+	{
+		if ( callback )
+			callback( false, null, { error: 'timeout' } );
+	};
+};
+Utilities.prototype.convertObjectToArray = function( obj, options )
+{
+	var	result = [];
+	for ( var d = 0; d < obj.length; d++ )
+	{
+		result.push( obj[ d ] );
+	}
+	if ( options )
+	{
+		if ( options.sort == 'up' )
+		{
+			result.sort( function( a, b )
+			{
+				return ( a < b ) ? 1 : -1;
+			} );
+		}
+		else if ( options.sort == 'down' )
+		{
+			result.sort( function( a, b )
+			{
+				return ( a > b ) ? 1 : -1;
+			} );
+		}
+	}
+	return result;
+};
+
+Utilities.prototype.copyArray = function ( arr )
+{
+	var result = [];
+	for ( var i = 0; i < arr.length; i++ )
+		result[ i ] = arr[ i ];
+	return result;
+};
+Utilities.prototype.copyObject = function ( obj )
+{
+	var result = {};
+	for ( var i in obj )
+		result[ i ] = obj[ i ];
+	return result;
+};
+Utilities.prototype.mergeObjectIntoNewObject = function ( destination, source )
+{
+	var result = {};
+	for ( var i in destination )
+		result[ i ] = destination[ i ];
+	for ( var i in source )
+		result[ i ] = source[ i ];
+	return result;
+};
+Utilities.prototype.getPropertyCase = function ( obj, prop, noCase )
+{
+	if ( typeof prop != 'string' )
+		return obj[ prop ];
+	if ( noCase )
+	{
+		prop = prop.toLowerCase();
+		for ( p in obj )
+		{
+			if ( p.toLowerCase() == prop )
+			{
+				return obj[ p ];
+			}
+		}
+	}
+	return obj[ prop ];
+};
+Utilities.prototype.findPropertyWithProp = function ( obj, propName, prop, noCase )
+{
+	if ( noCase )
+		prop = prop.toLowerCase();
+	for ( p in obj )
+	{
+		if ( obj[ p ] )
+		{
+			var found = obj[ p ][ propName ];
+			if ( noCase )
+				found = found.toLowerCase();
+			if ( found == prop )
+				return obj[ p ];
+		}
+	}
+	return obj[ prop ];
+};
+Utilities.prototype.cleanObject = function ( obj, exclude, noCase )
+{
+	var temp = {};
+	if ( typeof exclude == 'string' )
+	{
+		if ( noCase )
+		{
+			for ( var key in obj )
+			{
+				if ( typeof key != 'string' || key.toLowerCase() != exclude.toLowerCase() )
+					temp[ key ] = obj[ key ];
+			}
+		}
+		else
+		{
+			for ( var key in obj )
+			{
+				if ( key != exclude )
+					temp[ key ] = obj[ key ];
+			}
+		}
+	}
+	else
+	{
+		for ( var key in obj )
+		{
+			if ( obj[ key ] && obj[ key ] != exclude )
+				temp[ key ] = obj[ key ];
+		}
+	}
+	return temp;
+};
+Utilities.prototype.isObject = function( item )
+{
+    return typeof item != 'undefined' ? (typeof item === "object" && !Array.isArray(item) && item !== null) : false;
+};
+Utilities.prototype.isArray = function( item )
+{
+    return typeof item != 'undefined' ? item.constructor == Array : false;
+};
+Utilities.prototype.getTag = function( text, tags )
+{
+	if ( text && tags )
+	{
+		text = text.toLowerCase();
+		if ( typeof tags == 'string' )
+		{
+			if ( text.indexOf( '#' + tags.toLowerCase() ) >= 0 )
+			{
+				return tags;
+			}
+		}
+		else
+		{
+			for ( var t = 0; t < tags.length; t++ )
+			{
+				if ( text.indexOf( '#' + tags[ t ].toLowerCase() ) >= 0 )
+				{
+					return tags[ t ];
+				}
+			}
+		}
+	}
+	return '';
+};
+
+Utilities.prototype.isTag = function( text, tags )
+{
+	if ( text && tags )
+	{
+		text = text.toLowerCase();
+		for ( var t = 0; t < tags.length; t++ )
+		{
+			if ( text.indexOf( '#' + tags[ t ].toLowerCase() ) >= 0 )
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+};
+Utilities.prototype.getTagParameter = function( text, tag )
+{
+	if ( text && tag )
+	{
+		text = text.toLowerCase();
+		var start = text.indexOf( '#' + tag.toLowerCase() );
+		if ( start >= 0 )
+		{
+			start += tag.length + 1;
+			if ( text.charAt( start ) == ':' )
+			{
+				start++;
+				var end = text.indexOf( ',', start );
+				if ( end < 0 ) end = text.length;
+				var param = text.substring( start, end );
+				if ( param.charAt( 0 ) == '"' || param.charAt( 0 ) == "'" )
+					return text.substring( start + 1, end - 1 );
+				var number = this.val( param );
+				if ( !isNaN( number ) )
+					return number;
+				return param;
+			}
+		}
+	}
+	return undefined;
+};
+
+Utilities.prototype.val = function( value ) // made this just like one in raoz BJF
+{
+	var base = 10;
+	var result = 0;
+	var s = value.substring(0,1);
+	switch (s)
+	{
+		case '$':
+			value = value.substring( 1 );
+			base = 16;
+			result = parseInt( value, base );
+			break;
+		case '%':
+			value = value.substring( 1 );
+			base = 2;
+			result = parseInt( value, base );
+			break;
+		default:
+			result = parseFloat( value );
+	}
+	if ( isNaN( result ) )
+		result = 0;
+	return result;
+/*
+	var base = 10;
+	if ( value.substring( 0, 1 ) == '$' )
+	{
+		value = value.substring( 1 );
+		base = 16;
+	}
+	if ( value.substring( 0, 1 ) == '%' )
+	{
+		value = value.substring( 1 );
+		base = 2;
+	}
+	return parseInt( value, base ); // Int??? BJF
+	*/
+};
+
+Utilities.prototype.skipSpaces = function( line )
+{
+	var position = 0;
+	while ( ( line.charAt( position ) == ' ' || line.charAt( position ) == '\t' ) && position < line.length )
+		position++;
+	return line.substring( position );
+};
+Utilities.prototype.flattenObject = function( objet )
+{
+	var result = [];
+	for ( var i in objet )
+		result.push( objet[ i ] );
+	return result;
+};
+function fireEvent( el, etype )
+{
+  	if ( el.fireEvent )
+	{
+    	( el.fireEvent( 'on' + etype ) );
+  	}
+	else
+	{
+    	var evObj = document.createEvent( 'Events' );
+    	evObj.initEvent( etype, true, false );
+    	el.dispatchEvent( evObj );
+  	}
+}
+
+Utilities.prototype.getDistance = function( xA, yA, xB, yB )
+{
+	var xDiff = xA - xB; 
+	var yDiff = yA - yB; 
+	return Math.sqrt( xDiff * xDiff + yDiff * yDiff );
+};
+
+Utilities.prototype.getRotatedPoint = function( pivotX, pivotY, cornerX, cornerY, angle ) 
+{
+	var x, y, distance, diffX, diffY;
+	diffX = cornerX - pivotX;
+	diffY = cornerY - pivotY;
+	distance = Math.sqrt( diffX * diffX + diffY * diffY );
+	angle += Math.atan2( diffY, diffX );
+	x = pivotX + distance * Math.cos( angle );
+	y = pivotY + distance * Math.sin( angle );
+	return { x:x, y:y };
+};
+
+Utilities.prototype.getRotatedBoxPoints = function( x, y, width, height, rotation )
+{
+	var x1 = x - ( width / 2 ), y1 = y - ( height / 2 ), x2 = x + ( width / 2 ), y2 = y - ( height / 2 );
+	var x3 = x + ( width / 2 ), y3 = y + ( height / 2 ), x4 = x - ( width / 2 ), y4 = y + ( height / 2 );
+
+	var c = this.getRotatedPoint( x, y, x1, y1, rotation );
+	x1 = c.x; y1 = c.y;
+
+	c = this.getRotatedPoint( x, y, x2, y2, rotation );
+	x2 = c.x; y2 = c.y;
+
+	c = this.getRotatedPoint( x, y, x3, y3, rotation );
+	x3 = c.x; y3 = c.y;
+
+	c = this.getRotatedPoint( x, y, x4, y4, rotation );
+	x4 = c.x; y4 = c.y;
+
+	return [ { x: x1, y: y1 }, { x: x2, y: y2 }, { x: x3, y: y3 }, { x: x4, y: y4 }, { x: x1, y: y1 } ];
+};
+
+///////////////////////////////////////////////////////////////////////////////
+//
+// Properties
+//
+///////////////////////////////////////////////////////////////////////////////
+Utilities.prototype.getPropertyFromPath = function( root, path, throwError )
+{
+	var localPath = path;
+	var localRoot = root;
+	if ( !root )
+	{
+		if ( throwError )
+			throw { error: throwError, parameter: 'path: "' + path + '"' };
+		return undefined;
+	}
+	var dot = localPath.indexOf( '.' );
+	while ( dot >= 0 )
+	{
+		var index = -1;
+		var subpath = localPath.substring( 0, dot );
+		var start = subpath.indexOf( '[' );
+		if ( start >= 0 )
+		{
+			var end = subpath.indexOf( ']', start );
+			if ( end >= 0 )
+			{
+				index = parseInt( subpath.substring( start + 1, end ) );
+				subpath = subpath.substring( 0, start );
+			}
+		}
+		localRoot = localRoot[ subpath ];
+		if ( index >= 0 )
+			localRoot = localRoot[ index ];
+		localPath = localPath.substring( dot + 1 );
+		if ( typeof localRoot == 'undefined' )
+		{
+			if ( throwError )
+				throw { error: throwError, parameter: address };
+			return undefined;
+		}
+		dot = localPath.indexOf( '.' );
+	}
+
+	var value, index, name;
+	var start = localPath.indexOf( '[' );
+	if ( start >= 0 )
+	{
+		var end = localPath.indexOf( ']', start );
+		if ( end >= 0 )
+		{
+			index = parseInt( localPath.substring( start + 1, end ) );
+			name = localPath.substring( 0, start );
+			localRoot = localRoot[ name ];
+			value = localRoot[ index ];
+		}
+	}
+	else
+	{
+		name = localPath;
+		index = undefined;
+		value = localRoot[ localPath ];
+	}
+	return { root: root, localRoot: localRoot, path: path, localPath: localPath, name: name, index: index, value: value };
+};
+Utilities.prototype.getProperty = function( root, path, type, throwError, defaultValue )
+{
+	if ( !path )
+	{
+		if ( throwError )
+			throw { error: throwError, parameter: type };
+		return undefined;
+	}
+	if ( typeof defaultValue != 'undefined' )
+		throwError = undefined;
+	var property = this.getPropertyFromPath( root, path, throwError );
+	if ( typeof property == 'undefined' )
+		value = defaultValue;
+	else
+		value = property.value;
+	return this.checkAndReturnValueOfType( value, type, throwError );
+};
+Utilities.prototype.setProperty = function( root, path, value, throwError )
+{
+	var property = this.getPropertyFromPath( root, path );
+	if ( !property )
+	{
+		if ( throwError )
+			throw throwError;
+		return;
+	}
+	if ( value == '[]' )
+		value = [];
+	if ( value == '{}' )
+		value = {};
+	if ( typeof property.index != 'undefined' )
+		property.localRoot[ property.index ] = value;
+	else
+		property.localRoot[ property.name ] = value;
+};
+Utilities.prototype.getPropertyType = function( root, path, throwError )
+{
+	var property = this.getPropertyFromPath( root, path, throwError );
+	if ( property && property.value )
+	{
+		if ( typeof property.value == 'string' )
+		{
+			return 'string';
+		}
+		else if ( this.aoz.utilities.isObject( property.value ) )
+		{
+			return 'object';
+		}
+		else if ( this.aoz.utilities.isArray( property.value ) )
+		{
+			return 'array';
+		}
+		else
+		{
+			return 'number';
+		}
+	}
+	if ( throwError )
+		throw { error: throwError, parameter: type };
+	return '';
+};
+Utilities.prototype.checkAndReturnValueOfType = function( value, type, throwError )
+{
+	switch ( type )
+	{
+		case 'string':
+			if ( typeof value == 'string' )
+				return value;
+			break;
+		case 'number':
+			if ( typeof value == 'number' || typeof value == 'boolean' )
+				return value;
+			break;
+		case 'array':
+			if ( this.aoz.utilities.isArray( value ) )
+				return value;
+			break;
+		case 'object':
+			if ( !this.aoz.utilities.isObject( value ) )
+				return value;
+			break;
+		default:
+			break;
+	}
+	if ( throwError )
+		throw { error: throwError, parameter: type };
+	return undefined;
+};
+
+
+// Memory block class
+function MemoryBlock( aoz, buffer, endian )
+{
+	this.aoz = aoz;
+	if ( typeof buffer == 'number' )
+		buffer = new ArrayBuffer( buffer );
+	this.buffer = buffer;
+	this.bufferView = new Uint8Array( buffer );
+	this.length = this.bufferView.byteLength;
+	this.endian = typeof endian != 'undefined' ? endian : 'big';
+	this.isMemoryBlock = true;
+};
+MemoryBlock.prototype.setLength = function( newLength )
+{
+	if ( newLength != this.length )
+	{
+		if ( newLength < 0 )
+			throw 'illegal_function_call';
+
+		var currentBufferView = this.bufferView;
+		this.buffer = new ArrayBuffer( newLength );
+		this.bufferView = new Uint8Array( this.buffer );
+		var l = Math.min( newLength, this.length );
+		for ( var p = 0; p < l; p++ )
+			this.bufferView[ p ] = currentBufferView[ p ];
+		this.length = newLength;
+		return true;
+	}
+	return false;
+};
+MemoryBlock.prototype.extractString = function( address, length )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( length < 0 )
+		throw 'illegal_function_call';
+	if ( address + length > this.bufferView.length )
+		throw 'illegal_function_call';
+	var result = '';
+	for ( var l = 0; l < length; l++ )
+	{
+		var c = this.bufferView[ address + l ];
+		if ( c == 0 )
+			break;
+		if ( c < 32 )
+			c = ' ';
+		result += String.fromCharCode( c );
+	}
+	return result;
+};
+MemoryBlock.prototype.extractArrayBuffer = function( start, end )
+{
+	start = start - Math.floor( start / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	end = end - Math.floor( end / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	var length = end - start;
+	if ( length < 0 || start + length > this.bufferView.length )
+		throw 'illegal_function_call';
+	var buffer = new ArrayBuffer( length );
+	var view = new Uint8Array( buffer );
+	for ( var l = 0; l < length; l++ )
+	{
+		view[ l ] = this.bufferView[ start + l ];
+	}
+	return buffer;
+};
+MemoryBlock.prototype.extractArrayBufferLength = function( start, length )
+{
+	start = start - Math.floor( start / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( length < 0 || start + length > this.bufferView.length )
+		throw 'illegal_function_call';
+	var buffer = new ArrayBuffer( length );
+	var view = new Uint8Array( buffer );
+	for ( var l = 0; l < length; l++ )
+	{
+		view[ l ] = this.bufferView[ start + l ];
+	}
+	return buffer;
+};
+MemoryBlock.prototype.peek = function( address, signed )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( address > this.bufferView.length )
+		throw 'illegal_function_call';
+	if ( signed && v >= 0x80 )
+		return -( 0x100 - v );
+	return this.bufferView[ address ];
+};
+MemoryBlock.prototype.deek = function( address, signed )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( address + 2 > this.bufferView.length )
+		throw 'illegal_function_call';
+	var v;
+	if ( this.endian == 'big' )
+	{
+		v = ( this.bufferView[ address ] & 0xFF ) << 8 | this.bufferView[ address + 1 ] & 0xFF;
+	}
+	else
+	{
+		v = ( this.bufferView[ address + 1 ] & 0xFF ) << 8 | this.bufferView[ address ] & 0xFF;
+	}
+	if ( signed && v >= 0x8000 )
+		return -( 0x10000 - v );
+	return v;
+};
+MemoryBlock.prototype.leek = function( address, signed )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( address + 4 > this.bufferView.length )
+		throw 'illegal_function_call';
+	var v;
+	if ( this.endian == 'big' )
+	{
+		v = ( this.bufferView[ address ] & 0xFF ) << 24 | ( this.bufferView[ address + 1 ] & 0xFF ) << 16 | ( this.bufferView[ address + 2 ] & 0xFF ) << 8 | this.bufferView[ address + 3 ] & 0xFf;
+	}
+	else
+	{
+		v = ( this.bufferView[ address + 3 ] & 0xFF ) << 24 | ( this.bufferView[ address + 2 ] & 0xFF ) << 16 | ( this.bufferView[ address + 1 ] & 0xFF ) << 8 | this.bufferView[ address ] & 0xFF;
+	}
+	if ( signed && v >= 0x80000000 )
+		return -( 0x100000000 - v );
+	return v;
+};
+MemoryBlock.prototype.poke = function( address, value )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	value &= 0xFF;
+	if ( address >= this.bufferView.length )
+		throw 'illegal_function_call';
+	this.bufferView[ address ] = value;
+};
+MemoryBlock.prototype.doke = function( address, value )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	value &= 0xFFFF;
+	if ( address + 2 > this.bufferView.length )
+		throw 'illegal_function_call';
+	if ( this.endian == 'big' )
+	{
+		this.bufferView[ address ] = ( value >> 8 ) & 0xFF;
+		this.bufferView[ address + 1 ] = value & 0xFF;
+	}
+	else
+	{
+		this.bufferView[ address ] = value & 0xFF;
+		this.bufferView[ address + 1 ] = ( value & 0xFF ) >> 8;
+	}
+};
+MemoryBlock.prototype.loke = function( address, value )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	value &= 0xFFFFFFFF;
+	if ( address + 4 > this.bufferView.length )
+		throw 'illegal_function_call';
+	if ( this.endian == 'big' )
+	{
+		this.bufferView[ address ] = ( value >> 24 ) & 0xFF;
+		this.bufferView[ address + 1 ] = ( value >> 16 ) & 0xFF;
+		this.bufferView[ address + 2 ] = ( value  >> 8 ) & 0xFF;
+		this.bufferView[ address + 3 ] = value & 0xFF;
+	}
+	else
+	{
+		this.bufferView[ address ] = value & 0xFF;
+		this.bufferView[ address + 1 ] = ( value  >> 8 ) & 0xFF;
+		this.bufferView[ address + 2 ] = ( value  >> 16 ) & 0xFF;
+		this.bufferView[ address + 3 ] = ( value  >> 24 ) & 0xFF;
+	}
+};
+MemoryBlock.prototype.pokeArrayBuffer = function( address, buffer )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	var view = new Uint8Array( buffer );
+	if ( address + view.length > this.bufferView.length )
+		throw 'illegal_function_call';
+	for ( var b = 0; b < view.length; b++ )
+		this.bufferView[ address + b ] = view[ b ];
+};
+MemoryBlock.prototype.poke$ = function( address, text )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	if ( address + text.length > this.bufferView.byteLength )
+		throw 'illegal_function_call';
+	for ( var p = 0; p < text.length; p++ )
+		this.bufferView[ address + p ] = text.charCodeAt( p ) & 0xFF;
+};
+MemoryBlock.prototype.peek$ = function( address, length, stop )
+{
+	address = address - Math.floor( address / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	var text = '';
+	for ( var p = 0; p < length; p++ )
+	{
+		var c = String.fromCharCode( this.bufferView[ address + p ] );
+		if ( c == stop )
+			break;
+		if ( address + p > this.bufferView.byteLength )
+			throw 'illegal_function_call';
+		text += c;
+	}
+	return text;
+};
+MemoryBlock.prototype.fill = function( start, end, value )
+{
+	start = start - Math.floor( start / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	end = end - Math.floor( end / this.aoz.memoryHashMultiplier ) * this.aoz.memoryHashMultiplier;
+	var length = end - start;
+	if ( length < 0 || start + length > this.bufferView.byteLength )
+		throw 'illegal_function_call';
+
+	for ( var p = 0; p <= length - 4; p += 4 )
+		this.loke( start + p, value );
+	for ( ; p < length; p++ )
+	{
+		if ( this.endian == 'big' )
+		{
+			this.poke( start + p, ( value & 0xFF000000 ) >> 24 );
+			value = value << 8;
+		}
+		else
+		{
+			this.poke( start + p, value & 0xFF );
+			value = value >> 8;
+		}
+	}
+};
+MemoryBlock.prototype.copyTo = function( sourceAddress, destinationBlock, destinationAddress, length )
+{
+	if ( sourceAdress + length > this.bufferView.byteLength || destinationAddress + length > destinationBlock.bufferView.byteLength )
+		throw 'illegal_function_call';
+	if ( destinationBlock == this )
+	{
+		if ( destinationAddress < sourceAddress )
+		{
+			for ( var p = 0; p < length; p++ )
+				this.bufferView[ destinationAddress + p ] = this.bufferView[ sourceAddress + p ];
+		}
+		else
+		{
+			for ( var p = length - 1; p >= 0; p-- )
+				this.bufferView[ destinationAddress + p ] = this.bufferView[ sourceAddress + p ];
+		}
+	}
+	else
+	{
+		for ( var p = 0; p < length; p++ )
+			destinationBlock.bufferView[ destinationAddress + p ] = this.bufferView[ sourceAddress + p ];
+	}
+};
+MemoryBlock.prototype.copyFrom = function( destinationAddress, sourceBlock, sourceAddress, length )
+{
+	if ( destinationAddress + length > this.bufferView.byteLength || sourceAddress + length > sourceBlock.bufferView.byteLength )
+		throw 'illegal_function_call';
+	if ( sourceBlock == this )
+	{
+		if ( destinationAddress < sourceAddress )
+		{
+			for ( var p = 0; p < length; p++ )
+				this.bufferView[ destinationAddress + p ] = this.bufferView[ sourceAddress + p ];
+		}
+		else
+		{
+			for ( var p = length - 1; p >= 0; p-- )
+				this.bufferView[ destinationAddress + p ] = this.bufferView[ sourceAddress + p ];
+		}
+	}
+	else
+	{
+		for ( var p = 0; p < length; p++ )
+			this.bufferView[ destinationAddress + p ] = sourceBlock.bufferView[ sourceAddress + p ];
+	}
+};
+MemoryBlock.prototype.copyArray = function( address, sourceArray, type, length )
+{
+	length = typeof length == 'undefined' ? sourceArray.length : length;
+	switch ( type )
+	{
+		default:
+		case 'byte':
+			for ( var p = 0; p < length; p++ )
+			{
+				if ( typeof sourceArray[ p ] == 'string' )
+					this.poke( address + p, sourceArray[ p ].charCodeAt( 0 ) );
+				else
+					this.poke( address + p, sourceArray[ p ] );
+			}
+			break;``
+		case 'word':	// TODO
+			debugger;
+			for ( var p = 0; p < length; p++ )
+			{
+				if ( typeof sourceArray[ p ] == 'string' )
+					this.poke( address + p * 2, sourceArray[ p ].charCodeAt( 0 ) );
+				else
+					this.poke( address + p, sourceArray[ p ] );
+			}
+			break;
+		case 'dword':	// TODO
+			debugger;
+			for ( var p = 0; p < length; p++ )
+				this.loke( address + p * 4, sourceArray[ p ] );
+			break;
+	}
+};
+MemoryBlock.prototype.hunt = function( start, end, text )
+{
+	var length = end - start;
+	if ( length < 0 )
+		throw 'illegal_function_call';
+	if ( start + text.length > this.bufferView.byteLength )
+		return 0;
+	for ( var i = 0; i < length - text.length; i++ )
+	{
+		for ( var j = 0; j < text.length; j++ )
+		{
+			if ( this.bufferView[ start + i + j ] != text.charCodeAt( j ) & 0xFF )
+				break;
+		}
+		if ( j == text.length )
+			return this.memoryHash * this.aoz.memoryHashMultiplier + i;
+	}
+	return 0;
+};
+
+
+
+
+
+
+
+
+
+Utilities.prototype.getCharacterType = function( c )
+{
+	if ( c >= '0' && c <= '9' )
+		type = 'number';
+	else if ( c == ' ' || c == "\t" )
+		type = 'space';
+	else if ( ( c >= 'a' && c <= 'z') || ( c >= 'A' && c <= 'Z' ) || c == '_' )
+		type = 'letter';
+	else if ( c == '"' || c == "'"  )
+		type = 'quote';
+	else if ( c == ':' )
+		type = 'column';
+	else if ( c == ';' )
+		type = 'semicolumn';
+	else if ( c == '-' )
+		type = 'minus';
+	else if ( c == '(' || c == ')' )
+		type = 'bracket';
+	else
+		type = 'other';
+	return type;
+};
+
+// Fix coordinates
+Utilities.prototype.getZone = function( rectangle, dimensions, scale )
+{
+	rectangle = typeof rectangle == 'undefined' ? {} : rectangle;
+	scale = typeof scale == 'undefined' ? { x: 1, y: 1, z: 1 } : scale;
+	rectangle.x = typeof rectangle.x == 'undefined' ? 0 : rectangle.x;
+	rectangle.y = typeof rectangle.y == 'undefined' ? 0 : rectangle.y;
+	rectangle.width = isNaN( rectangle.width )  ? dimensions.width : rectangle.width;
+	rectangle.height = isNaN( rectangle.height ) ? dimensions.height : rectangle.height;
+	return { x: rectangle.x * scale.x, y: rectangle.y * scale.y, width: rectangle.width * scale.x, height: rectangle.height * scale.y };
+};
+Utilities.prototype.checkRectangle = function( rectangle, position, dimension )
+{
+	rectangle.x = typeof rectangle.x != 'undefined' ? rectangle.x : position.x;
+	rectangle.y = typeof rectangle.y != 'undefined' ? rectangle.y : position.y;
+	if ( dimension )
+	{
+		if ( typeof rectangle.width == 'undefined' || typeof rectangle.height == 'undefined' )
+			throw 'illegal_function_call';
+		if ( rectangle.x + rectangle.width > dimension.width )
+			rectangle.width = dimension.width - rectangle.x;
+		if ( rectangle.y + rectangle.height > dimension.height )
+			rectangle.height = this.dimension.height - rectangle.y;
+		if ( rectangle.width <= 0 || rectangle.height <= 0 )
+			throw 'illegal_function_call';
+	}
+	return rectangle;
+};
+Utilities.prototype.makeTransparentImage = function( image )
+{
+	var canvas = document.createElement( 'canvas' );
+	canvas.width = image.width;
+	canvas.height = image.height;
+	var context = canvas.getContext( '2d' );
+	context.drawImage( image, 0, 0 );
+	this.remapBlock( context, [ { r: 0, g: 0, b: 0 } ], [ { r: 0, g: 0, b: 0, a: 0 } ], { x: 0, y: 0, width: image.width, height: image.height } );
+	return canvas;
+};
+Utilities.prototype.flipCanvas = function( canvas, horizontal, vertical )
+{
+	var flipCanvas = document.createElement( 'canvas' );
+	flipCanvas.width = canvas.width;
+	flipCanvas.height = canvas.height;
+	var flipContext = flipCanvas.getContext( '2d' );
+	flipContext.translate( horizontal ? canvas.width : 0, vertical ? canvas.height : 0 );
+	flipContext.scale( horizontal ? -1 : 1, vertical ? -1 : 1 );
+	flipContext.drawImage( canvas, 0, 0 );
+	//flipContext.fillStyle = this.backgroundColor;
+	//flipContext.fillRect( 0, 0, canvas.width, canvas.height );
+	return flipCanvas;
+};
+Utilities.prototype.remapBlock = function( context, rgbaSource, rgbaDestination, coordinates )
+{
+	// Do the remapping
+	if ( coordinates.width > 0 && coordinates.height > 0 )
+	{
+		var imageData = context.getImageData( coordinates.x, coordinates.y, coordinates.width, coordinates.height );
+
+		var data = imageData.data;
+		if ( rgbaSource.length == 1 )
+		{
+			rgbaSource = rgbaSource[ 0 ];
+			rgbaDestination = rgbaDestination[ 0 ];
+			var alpha = typeof rgbaDestination.a != 'undefined';
+			for ( var p = 0; p < data.length; p += 4 )
+			{
+				if ( data[ p ] == rgbaSource.r && data[ p + 1 ] == rgbaSource.g && data[ p + 2 ] == rgbaSource.b )
+				{
+					data[ p ] = rgbaDestination.r;
+					data[ p + 1 ] = rgbaDestination.g;
+					data[ p + 2 ] = rgbaDestination.b;
+					if ( alpha )
+						data[ p + 3 ] = rgbaDestination.a;
+				}
+			}
+		}
+		else
+		{
+			for ( var p = 0; p < data.length; p += 4 )
+			{
+				for ( var c = 0; c < rgbaSource.length; c++ )
+				{
+					var source = rgbaSource[ c ];
+					if ( data[ p ] == source.r && data[ p + 1 ] == source.g && data[ p + 2 ] == source.b )
+					{
+						var destination = rgbaDestination[ c ];
+						data[ p ] = destination.r;
+						data[ p + 1 ] = destination.g;
+						data[ p + 2 ] = destination.b;
+						if ( typeof destination.a != 'undefined' )
+							data[ p + 3 ] = destination.a;
+					}
+				}
+			}
+		}
+		context.putImageData( imageData, coordinates.x, coordinates.y );
+	}
+};
+/**
+ * Hermite resize - fast image resize/resample using Hermite filter. 1 cpu version!
+ *
+ * @param {HtmlElement} canvas
+ * @param {int} width
+ * @param {int} height
+ * @param {boolean} resize_canvas if true, canvas will be resized. Optional.
+ */
+Utilities.prototype.resample_canvas = function(canvas, width, height, resize_canvas)
+{
+    var width_source = canvas.width;
+    var height_source = canvas.height;
+    width = Math.round(width);
+    height = Math.round(height);
+
+    var ratio_w = width_source / width;
+    var ratio_h = height_source / height;
+    var ratio_w_half = Math.ceil(ratio_w / 2);
+    var ratio_h_half = Math.ceil(ratio_h / 2);
+
+    var ctx = canvas.getContext("2d");
+    var img = ctx.getImageData(0, 0, width_source, height_source);
+    var img2 = ctx.createImageData(width, height);
+    var data = img.data;
+    var data2 = img2.data;
+
+    for (var j = 0; j < height; j++) {
+        for (var i = 0; i < width; i++) {
+            var x2 = (i + j * width) * 4;
+            var weight = 0;
+            var weights = 0;
+            var weights_alpha = 0;
+            var gx_r = 0;
+            var gx_g = 0;
+            var gx_b = 0;
+            var gx_a = 0;
+            var center_y = (j + 0.5) * ratio_h;
+            var yy_start = Math.floor(j * ratio_h);
+            var yy_stop = Math.ceil((j + 1) * ratio_h);
+            for (var yy = yy_start; yy < yy_stop; yy++) {
+                var dy = Math.abs(center_y - (yy + 0.5)) / ratio_h_half;
+                var center_x = (i + 0.5) * ratio_w;
+                var w0 = dy * dy; //pre-calc part of w
+                var xx_start = Math.floor(i * ratio_w);
+                var xx_stop = Math.ceil((i + 1) * ratio_w);
+                for (var xx = xx_start; xx < xx_stop; xx++) {
+                    var dx = Math.abs(center_x - (xx + 0.5)) / ratio_w_half;
+                    var w = Math.sqrt(w0 + dx * dx);
+                    if (w >= 1) {
+                        //pixel too far
+                        continue;
+                    }
+                    //hermite filter
+                    weight = 2 * w * w * w - 3 * w * w + 1;
+                    var pos_x = 4 * (xx + yy * width_source);
+                    //alpha
+                    gx_a += weight * data[pos_x + 3];
+                    weights_alpha += weight;
+                    //colors
+                    if (data[pos_x + 3] < 255)
+                        weight = weight * data[pos_x + 3] / 250;
+                    gx_r += weight * data[pos_x];
+                    gx_g += weight * data[pos_x + 1];
+                    gx_b += weight * data[pos_x + 2];
+                    weights += weight;
+                }
+            }
+            data2[x2] = gx_r / weights;
+            data2[x2 + 1] = gx_g / weights;
+            data2[x2 + 2] = gx_b / weights;
+            data2[x2 + 3] = gx_a / weights_alpha;
+        }
+    }
+    //clear and resize canvas
+    if (resize_canvas === true) {
+        canvas.width = width;
+        canvas.height = height;
+    } else {
+        ctx.clearRect(0, 0, width_source, height_source);
+    }
+
+    //draw
+    ctx.putImageData(img2, 0, 0);
+}
+Utilities.prototype.loadUnlockedImages = function( pathArray, options, callback, extra )
+{
+	var error = false;
+	var images ={};
+	var count = pathArray.length;
+	for ( var p = 0; p < pathArray.length; p++ )
+	{
+		var path = pathArray[ p ];
+		var name = this.getFilename( path );
+		this.loadUnlockedImage( path, options, function( response, data, extra )
+		{
+			images[ extra ] = data;
+			if ( !response )
+				error |= true;
+			count--;
+			if ( count == 0 )
+				callback( !error, images, extra );
+		}, name );
+	}
+};
+Utilities.prototype.loadUnlockedImage = function( path, options, callback, extra )
+{
+	var self = this;
+	options = options ? options : {};
+	var name = this.getFilename( path );
+	var extension = this.getFilenameExtension( path );
+	path = path.substring( 0, path.length - ( name.length + extension.length + 1 ) );
+	var type = options.type ? options.type : undefined;
+	switch ( extension.toLowerCase() )
+	{
+		case 'gif':
+			type = type ? type : 'image/png';
+			extension = 'js';
+			break;
+		case 'jpg':
+		case 'jpeg':
+			type = type ? type : 'image/jpeg';
+			extension = 'js';
+			break;
+		case 'png':
+			type = type ? type : 'image/png';
+			extension = 'js';
+			break;
+		default:
+			type = type ? type : 'image/png';
+			break;
+	}
+	if ( AOZ_Files[ 'image_' + name ] )
+	{
+		loadIt( AOZ_Files[ 'image_' + name ] );
+	}
+	else
+	{
+		this.aoz.loadingMax++;
+		this.loadScript( path + name + '.' + extension, options, function( response, data, extra )
+		{
+			if ( response )
+			{
+				loadIt( AOZ_Files[ 'image_' + name ] );
+			}
+			else
+			{
+				self.aoz.loadingCount++;
+				callback( false, null, extra );
+			}
+		}, extra );
+	}
+	function loadIt( base64 )
+	{
+		self.aoz.loadingCount++;
+		var arrayBuffer = self.convertStringToArrayBuffer( base64 );
+		var blob = new Blob( [ arrayBuffer ], { type: type } );
+		var urlCreator = window.URL || window.webkitURL;
+		var imageUrl = urlCreator.createObjectURL( blob );
+		var image = new Image();
+		image.onload = function()
+		{
+			callback( true, this, extra );
+		};
+		image.src = imageUrl;
+	}
+};
+
+Utilities.prototype.loadUnlockedSound = function( path, options, callback, extra )
+{
+	var self = this;
+	var name = 'sound_' + this.getFilename( path );
+	if ( AOZ_Files[ name ] )
+	{
+		loadIt( AOZ_Files[ name ] );
+		if ( !options.keepSource )
+			AOZ_Files[ name ] = null;
+	}
+	else
+	{
+		this.aoz.loadingMax++;
+		this.loadScript( path, options, function( response, data, extra )
+		{
+			self.aoz.loadingCount++;
+			if ( response )
+			{
+				if ( AOZ_Files[ name ] )
+				{
+					loadIt( AOZ_Files[ name ] );
+					if ( !options.keepSource )
+						AOZ_Files[ name ] = null;
+				}
+				else
+				{
+					callback( false, null, extra );
+				}
+			}
+			else
+			{
+				callback( false, null, extra );
+			}
+		}, extra );
+	}
+	function loadIt( source )
+	{
+		self.aoz.loadingMax++;
+		var sound = new Howl( { src: [ source ] } );
+		sound.on( "load", function()
+		{
+			self.aoz.loadingCount++;
+			callback( true, sound, extra );
+		} );
+		sound.on( "loaderror", function()
+		{
+			self.aoz.loadingCount++;
+			callback( false, null, extra );
+		} );
+	}
+};
+Utilities.prototype.loadMultipleUnlockedSound = function( path, number, options, callback, extra )
+{
+	var result = [];
+	for ( var n = 0; n < number; n++ )
+	{
+		this.loadUnlockedSound( path, { keepSource: true }, function( response, sound, num )
+		{
+			if ( response )
+			{
+				result.push( sound );
+				if ( result.length == number )
+					callback( true, result, extra );
+			}
+		}, n );
+	}
+};
+
+Utilities.prototype.loadUnlockedBankElement = function( path, options, callback, extra )
+{
+	var self = this;
+	var name = 'bank_' + options.name;
+	if ( AOZ_Files[ name ] )
+	{
+		callback( true, AOZ_Files[ name ] );
+		//if ( !options.keepSource )
+		//	AOZ_Files[ name ] = null;
+	}
+	else
+	{
+		this.aoz.loadingMax++;
+		this.loadScript( path, options, function( response, data, name2 )
+		{
+			self.aoz.loadingCount++;
+			if ( response )
+			{
+				/*
+				debugger;
+				if ( AOZ_Files[ 'bank_10' ] && AOZ_Files[ 'bank_11' ] )
+				{
+					if ( AOZ_Files[ 'bank_10' ] == AOZ_Files[ 'bank_11' ] )
+					{
+						var merde = 1;
+					}
+				}
+				*/
+				var arrayBuffer = self.convertStringToArrayBuffer( AOZ_Files[ name2 ] );
+				//if ( !options.keepSource )
+				//	AOZ_Files[ name2 ] = null;
+				callback( true, arrayBuffer, extra );
+			}
+			else
+			{
+				callback( false, null, extra );
+			}
+		}, name );
+	}
+};
+
+Utilities.prototype.findEndOfLine = function( text, pos )
+{
+	if ( pos >= text.length )
+		return pos;
+
+	var p1 = text.indexOf( '\r\n', pos );
+	var p2 = text.indexOf( '\n', pos );
+	if ( p1 >= 0 && p2 >= 0 )
+	{
+		if ( p2 == p1 + 1 )
+			return p1;
+		if ( p2 < p1 )
+			return p2;
+		return p1;
+	}
+	if ( p1 >= 0 )
+		return p1;
+	if ( p2 >= 0 )
+		return p2;
+	return text.length;
+};
+Utilities.prototype.findNextLine = function( text, pos )
+{
+	if ( pos >= text.length )
+		return 0;
+
+	if ( text.indexOf( '\r\n', pos ) == pos )
+		return pos + 2;
+	return pos + 1;
+};
+Utilities.prototype.findStartOfLine = function( text, pos )
+{
+	while( text.charCodeAt( pos ) != 10 && pos > 0 )
+		pos--;
+	if ( pos > 0 )
+	{
+		pos++;
+		return pos;
+	}
+	return -1;
+};
+
+////////////////////////////////////////////////////////////////////////////
+//
+// Context management: aoz-3 here we come -> will drive everything!
+//
+////////////////////////////////////////////////////////////////////////////
+function AOZContext( aoz, domain, options )
+{
+	this.aoz = aoz;
+	this.options = options;
+	this.domain = domain;
+	this.contexts = {};
+	this.list = {};
+	this.listNames = {};
+	this.listSorted = [];
+	this.listSortedInContext = {};
+	this.numberOfElements = 0;
+	this.numberOfElementsInContext = {};
+	if ( domain )
+		this.addContext( domain );
+};
+AOZContext.prototype.addContext = function( contextName )
+{
+	if ( !this.contexts[ contextName ] )
+	{
+		this.numberOfElementsInContext[ contextName ] = 0;
+		if ( this.options.sorted )
+			this.listSortedInContext[ contextName ] = [];
+		this.contexts[ contextName ] = true;
+	}
+};
+AOZContext.prototype.reset = function( contextName )
+{
+	if ( contextName )
+	{
+		var temp = {};
+		var count = 0;
+		for ( var i in this.list )
+		{
+			if ( this.list[ i ].contextName != contextName )
+			{
+				temp[ i ] = this.list[ i ];
+				count++;
+			}
+		}
+		this.list = temp;
+		this.numberOfElements = count;
+
+		temp = {};
+		count = 0;
+		for ( var i in this.listNames )
+		{
+			if ( this.listNames[ i ].contextName != contextName )
+			{
+				temp[ i ] = this.listNames[ i ];
+				count++;
+			}
+		}
+		this.listNames = temp;
+
+		this.numberOfElementsInContext[ contextName ] = 0;
+
+		if ( this.options.sorted )
+		{
+			var temp = [];
+			for ( var i = 0; i < this.listSorted.length; i++ )
+			{
+				if ( this.listSorted[ i ].contextName != contextName )
+					temp.push( this.list[ i ] );
+			}
+			this.listSorted = temp;
+			this.listSortedInContext[ contextName ] = [];
+		}
+	}
+	else
+	{
+		this.list = {};
+		this.listNames = {};
+		this.numberOfElements = 0;
+		for ( var name in this.contexts )
+		{
+			this.numberOfElementsInContext[ name ] = 0;
+			if ( this.options.sorted )
+				this.listSortedInContext[ name ] = [];
+		}
+	}
+};
+AOZContext.prototype.getElementInfosFromFilename = function( contextName, filename, type, index, indexMap )
+{
+	var newIndex, name;
+	var firstDot = filename.indexOf( '.' );
+	if ( firstDot >= 0 )
+	{
+		newIndex = parseInt( filename.substring( 0, firstDot ) );
+		if ( !isNaN( newIndex ) )
+		{
+			var lastDot = filename.lastIndexOf( '.' );
+			if ( lastDot >= firstDot )
+			{
+				name = filename.substring( firstDot + 1, lastDot );
+				index = newIndex;
+			}
+		}
+		else
+		{
+			newIndex = undefined;
+		}
+	}
+	if ( typeof name == 'undefined' )
+	{
+		if ( firstDot >= 0 )
+			name = filename.substring( 0, firstDot );
+		else
+			name = filename;
+	}
+	if ( typeof newIndex == 'undefined' )
+	{
+		if ( typeof index == 'undefined' )
+			index = this.getFreeIndex( contextName, indexMap )
+	}
+	return { name: name, index: index };
+};
+AOZContext.prototype.getFreeIndex = function( contextName, indexMap )
+{
+	contextName = contextName ? contextName : this.domain;
+	for ( var index = 1; index < 1000000; index++ )
+	{
+		if ( !this.list[ contextName + ':' + index ] )
+		{
+			if ( indexMap && !indexMap[ index ] )
+			{
+				indexMap[ index ] = true;
+				return index;
+			}
+		}
+	}
+	return -1;
+};
+AOZContext.prototype.getElement = function( contextName, index, errorString )
+{
+	if ( typeof index == 'number' )
+	{
+		if ( index < 0 )
+			throw 'illegal_function_call';
+
+		contextName = contextName ? contextName : this.domain;
+		var contextIndex = contextName + ':' + index;
+		if ( this.list[ contextIndex ] )
+			return this.list[ contextIndex ];
+	}
+	else
+	{
+		contextName = contextName ? contextName : this.domain;
+		var contextIndex = contextName + ':' + index;
+		if ( this.listNames[ contextIndex ] )
+			return this.listNames[ contextIndex ];
+	}
+	if ( errorString )
+		throw errorString;
+	return null;
+};
+AOZContext.prototype.getProperty = function( contextName, index, propertyName, errorString )
+{
+	var element = this.getElement( contextName, index, errorString );
+	if ( element )
+		return element[ propertyName ];
+	return undefined;
+};
+AOZContext.prototype.setProperty = function( contextName, index, propertyName, value, errorString )
+{
+	var element = this.getElement( contextName, index, errorString );
+	if ( element )
+		element[ propertyName ] = value;
+	return element;
+};
+AOZContext.prototype.setRangeProperties = function( contextName, first, last, propertyName, value, errorString )
+{
+	first = typeof first == 'undefined' ? 0 : first;
+	if ( typeof last == 'undefined' )
+	{
+		if ( first == 0 )
+		{
+			this.reset( contextName );
+			return;
+		}
+		last = this.getNumberOfElements( contextName );
+	}
+	if ( typeof first == 'number' && typeof last == 'number' )
+	{
+		if ( last < first )
+			throw 'illegal_function_call';
+
+		for ( var count = first; count < last; count++ )
+		{
+			var element = this.getElement( contextName, index, errorString );
+			if ( element )
+				element[ propertyName ] = value;
+		}
+		return;
+	}
+	throw 'type_mismatch';
+
+};
+AOZContext.prototype.setElement = function( contextName, element, index, replace = true, errorString = 'internal_error' )
+{
+	if ( typeof index == 'number' && index < 0 )
+		throw 'illegal_function_call';
+
+	contextName = contextName ? contextName : this.domain;
+	if ( typeof index == 'undefined' )
+		index = this.getLastIndex( contextName );
+	var contextIndex = contextName + ':' + index;
+	var contextIndexName;
+	if ( element.name )
+		contextIndexName = contextName + ':' + element.name;
+	else if ( typeof index == 'string' )
+	{
+		element.name = index;
+		contextIndexName = contextName + ':' + index;
+	}
+	else
+	{
+		element.name = 'item_' + Math.random() * 1000000;
+		contextIndexName = contextName + ':' + element.name;
+	}
+	if ( this.list[ contextIndex ] )
+	{
+		if ( !replace )
+		{
+			if ( errorString && errorString != '' ) throw errorString;
+			console.log( 'AOZContext:setElement failed.' );
+			return -1;
+		}
+		this.deleteElement( contextName, index );
+	}
+
+	// Insert data into element
+	element.index = index;
+	element.indexIsNumber = ( typeof index == 'number' );
+	element.contextIndex = contextIndex;
+	element.contextIndexName = contextIndexName;
+	element.contextName = contextName;
+	this.list[ contextIndex ] = element;
+	this.listNames[ contextIndexName ] = element;
+	this.numberOfElements++;
+	this.numberOfElementsInContext[ contextName ]++;
+
+	// Position in sorted list
+	if ( this.options.sorted )
+	{
+		element.indexSorted = this.listSorted.length;
+		this.listSorted.push( element );
+		element.indexSortedInContext = this.listSortedInContext[ contextName ].length;
+		this.listSortedInContext[ contextName ].push( element );
+	}
+	return index;
+};
+AOZContext.prototype.addElement = function( contextName, element, errorString = 'internal_error' )
+{
+	var index = this.numberOfElementsInContext[ contextName ];
+	this.setElement( contextName, element, this.numberOfElementsInContext[ contextName ], false, errorString );
+	return index;
+};
+AOZContext.prototype.deleteElement = function( contextName, index, errorString )
+{
+	if ( typeof index == 'number' && index < 0 )
+		throw 'illegal_function_call';
+	contextName = contextName ? contextName : this.domain;
+	var contextIndex, contextIndexName;
+
+	if ( this.aoz.utilities.isObject( index ) )
+	{
+		var found;
+		for ( var e in this.list )
+		{
+			if ( this.list[ e ] == index )
+				found = this.list[ e ];
+		}
+		if ( found )
+		{
+			contextIndex = contextName + ':' + found.index;
+			contextIndexName = contextName + ':' + this.list[ contextIndex ].name;
+		}
+		else
+		{
+			if ( errorString ) throw errorString;
+			return;
+		}
+	}
+	else if ( typeof index == 'string' )
+	{
+		contextIndexName = contextName + ':' + index;
+		if ( !this.listNames[ contextIndexName ] )
+		{
+			if ( errorString ) throw errorString;
+			return;
+		}
+		contextIndex = contextName + ':' + this.listNames[ contextIndexName ].index;
+	}
+	else
+	{
+		contextIndex = contextName + ':' + index;
+		if ( !this.list[ contextIndex ] )
+		{
+			if ( errorString ) throw errorString;
+			return;
+		}
+		contextIndexName = contextName + ':' + this.list[ contextIndex ].name;
+	}
+	var element = this.list[ contextIndex ];
+	if ( !element )
+	{
+		if ( errorString ) throw errorString;
+		return;
+	}
+	this.list = this.aoz.utilities.cleanObject( this.list, contextIndex );
+	this.listNames = this.aoz.utilities.cleanObject( this.listNames, contextIndexName );
+
+	if ( this.options.sorted )
+	{
+		this.listSorted.splice( element.indexSorted, 1 );
+		this.listSortedInContext[ contextName ].splice( element.indexSortedInContext, 1 );
+		for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+			this.listSortedInContext[ contextName ][ i ].indexSortedInContext = i;
+		for ( var i = 0; i < this.listSorted.length; i++ )
+			this.listSorted[ i ].indexSorted = i;
+	}
+	this.numberOfElements--;
+	this.numberOfElementsInContext[ contextName ]--;
+};
+AOZContext.prototype.deleteRange = function( contextName, first, last )
+{
+	first = typeof first == 'undefined' ? 0 : first;
+	if ( typeof last == 'undefined' )
+	{
+		if ( typeof first == 'number' && first == 0 )
+		{
+			this.reset( contextName );
+			return;
+		}
+		last = this.getNumberOfElements();
+	}
+	if ( typeof first == 'number' && typeof last == 'number' )
+	{
+		if ( last < first )
+			throw 'illegal_function_call';
+
+		for ( var count = first; count < last; count++ )
+			this.deleteElement( contextName, count );
+		return;
+	}
+	throw 'type_mismatch';
+};
+AOZContext.prototype.isAny = function( contextName )
+{
+	if ( contextName )
+		return this.numberOfElementsInContext[ contextName ] > 0;
+	return this.numberOfElements > 0;
+};
+AOZContext.prototype.getNumberOfElements = function( contextName )
+{
+	if ( contextName )
+		return this.numberOfElementsInContext[ contextName ];
+	return this.numberOfElements;
+};
+AOZContext.prototype.getHighestElementIndex = function( contextName )
+{
+	var higher = -1;
+	for ( var i in this.list )
+	{
+		if ( this.list[ i ].indexIsNumber )
+		{
+			higher = Math.max( higher, this.list[ i ].index );
+		}
+	}
+	return higher >= 0 ? higher : undefined;
+};
+AOZContext.prototype.getLowestElementIndex = function( contextName )
+{
+	var lower = 999999999;
+	for ( var i in this.list )
+	{
+		if ( this.list[ i ].indexIsNumber )
+		{
+			lower = Math.min( lower, this.list[ i ].index );
+		}
+	}
+	return lower != 999999999 ? lower : undefined;
+};
+AOZContext.prototype.getFirstElement = function( contextName )
+{
+	if ( this.options.sorted )
+	{
+		var element = null;
+		if ( contextName && this.listSortedInContext[ contextName ].length > 0 )
+			element = this.listSortedInContext[ contextName ][ 0 ];
+		else if ( this.listSorted.length > 0 )
+			element = this.listSorted[ 0 ];
+		this.getFirstIndex = element ? element.indexSorted : undefined;
+		this.getFirstIndexInContext = element ? element.indexSortedInContext : undefined;
+		return element;
+	}
+	else
+	{
+		this.flatList = this.aoz.utilities.flattenObject( this.list );
+		this.getFirstIndex = 0;
+		return this.flatList[ this.getFirstIndex ];
+	}
+};
+AOZContext.prototype.getLastElement = function( contextName )
+{
+	if ( this.options.sorted )
+	{
+		var element = null;
+		if ( contextName && this.listSortedInContext[ contextName ].length > 0 )
+			element = this.listSortedInContext[ contextName ][ this.listSortedInContext[ contextName ].length - 1 ];
+		else if ( this.listSorted.length > 0 )
+			element = this.listSorted[ this.listSorted.length - 1 ];
+		this.getLastIndex = element ? element.indexSorted : undefined;
+		this.getLastIndexInContext = element ? element.indexSortedInContext : undefined ;
+		return element;
+	}
+	else
+	{
+		this.flatList = this.aoz.utilities.flattenObject( this.list );
+		this.getLastIndex = this.flatList.length - 1;
+		return this.flatList[ this.getLastIndex ];
+	}
+};
+AOZContext.prototype.getNextElement = function( contextName )
+{
+	if ( typeof this.getFirstIndex == 'undefined' )
+		return null;
+
+	if ( this.options.sorted )
+	{
+		if ( contextName && this.getFirstIndex < this.listSortedInContext[ contextName ].length - 1 )
+			return this.listSortedInContext[ contextName ][ ++this.getFirstIndex ];
+		else if ( this.getFirstIndex < this.listSorted.length - 1 )
+			return this.listSorted[ ++this.getFirstIndex ];
+	}
+	else if ( this.getFirstIndex < this.flatList.length - 1 )
+	{
+		return this.flatList[ ++this.getFirstIndex ];
+	}
+	this.getFirstIndex = undefined;
+	return null;
+};
+AOZContext.prototype.getPreviousElement = function( contextName )
+{
+	if ( !this.getLastIndex )
+		return null;
+
+	if ( this.getLastIndex > 0 )
+	{
+		if ( this.options.sorted )
+		{
+			if ( contextName )
+				return this.listSortedInContext[ contextName ][ --this.getLastIndex ];
+			else
+				return this.listSorted[ --this.getLasttIndex ];
+		}
+		else
+		{
+			return this.flatList[ --this.getLastIndex ];
+		}
+	}
+	this.getLastIndex = undefined;
+	return null;
+};
+AOZContext.prototype.sort = function( contextName, sortFunction )
+{
+	if ( typeof sortFunction == 'undefined' )
+		sortFunction = sortIndex;
+	if ( contextName )
+	{
+		this.listSortedInContext[ contextName ].sort( sortFunction );
+		for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+			this.listSortedInContext[ contextName ][ i ].indexSortedInContext = i;
+	}
+	this.listSorted.sort( sortFunction );
+	for ( var i = 0; i < this.listSorted.length; i++ )
+		this.listSorted[ i ].indexSorted = i;
+
+	function sortIndex( a, b )
+	{
+		if ( a.indexIsNumber && b.indexIsNumber )
+		{
+			if ( a.index < b.index ) return -1;
+			if ( a.index > b.index ) return 1;
+			return 0;
+		}
+		return 0;
+	}
+};
+AOZContext.prototype.parseAll = function( contextName, callback, extra )
+{
+	if ( this.options.sorted )
+	{
+		if ( contextName )
+		{
+			for ( var index = 0; index < this.listSortedInContext[ contextName ].length; index++ )
+				callback( this.listSortedInContext[ contextName ][ index ], extra );
+		}
+		else
+		{
+			for ( var index = 0; index < this.listSorted.length; index++ )
+				callback( this.listSorted[ index ], extra );
+		}
+	}
+	else
+	{
+		for ( var index in this.list )
+			callback( this.list[ index ], extra );
+	}
+};
+AOZContext.prototype.moveToStart = function( contextName, element )
+{
+	if ( this.options.sorted )
+	{
+		if ( contextName )
+		{
+			this.listSortedInContext[ contextName ].splice( element.indexSortedInContext, 1 );
+			this.listSortedInContext[ contextName ].unshift( element );
+			for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+				this.listSortedInContext[ contextName ][ i ].indexSortedInContext = i;
+		}
+		this.listSorted.splice( element.indexSorted, 1 );
+		this.listSorted.unshift( element );
+		for ( var i = 0; i < this.listSorted.length; i++ )
+			this.listSorted[ i ].indexSorted = i;
+	}
+};
+AOZContext.prototype.moveToEnd = function( contextName, element )
+{
+	if ( this.options.sorted )
+	{
+		if ( contextName )
+		{
+			this.listSortedInContext[ contextName ].splice( element.indexSortedInContext, 1 );
+			this.listSortedInContext[ contextName ].push( element );
+			for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+				this.listSortedInContext[ contextName ][ i ].indexSortedInContext = i;
+		}
+		this.listSorted.splice( element.indexSorted, 1 );
+		this.listSorted.push( element );
+		for ( var i = 0; i < this.listSorted.length; i++ )
+			this.listSorted[ i ].indexSorted = i;
+	}
+};
+AOZContext.prototype.moveAfter = function( contextName, source, destination )
+{
+	if ( this.options.sorted )
+	{
+		if ( contextName )
+		{
+			this.listSortedInContext[ contextName ].splice( source.indexSortedInContext, 1 );
+			if ( source.indexSortedInContext < destination.indexSortedInContext )
+				this.listSortedInContext[ contextName ].splice( destination.indexSortedInContext, 0, source );
+			else
+				this.listSortedInContext[ contextName ].splice( destination.indexSortedInContext + 1, 0, source );
+			for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+				this.listSortedInContext[ contextName ][ i ].indexSortedInContext = i;
+		}
+		this.listSorted[ contextName ].splice( source.indexSorted, 1 );
+		if ( source.indexSorted < destination.indexSorted )
+			this.listSorted[ contextName ].splice( destination.indexSorted, 0, source );
+		else
+			this.listSorted[ contextName ].splice( destination.indexSorted + 1, 0, source );
+		for ( var i = 0; i < this.listSorted.length; i++ )
+			this.listSorted[ i ].indexSorted = i;
+	}
+};
+AOZContext.prototype.moveBefore = function( contextName, source, destination )
+{
+	if ( this.options.sorted )
+	{
+		var result = [];
+		if ( contextName )
+		{
+			for ( var i = 0; i < this.listSortedInContext[ contextName ].length; i++ )
+			{
+				var element = this.listSortedInContext[ contextName ][ i ];
+				if ( element == destination )
+				{
+					source.indexSortedInContext = result.length;
+					result.push( source );
+					destination.indexSortedInContext = result.length;
+					result.push( destination );
+				}
+				else if ( element != source )
+				{
+					element.indexSortedInContext = result.length;
+					result.push( source );
+				}
+			}
+			this.listSortedInContext[ contextName ] = result;
+			result = [];
+		}
+		for ( var i = 0; i < this.listSorted.length; i++ )
+		{
+			var element = this.listSorted[ i ];
+			if ( element == destination )
+			{
+				source.indexSorted = result.length;
+				result.push( source );
+				destination.indexSorted = result.length;
+				result.push( destination );
+			}
+			else if ( element != source )
+			{
+				element.indexSorted = result.length;
+				result.push( source );
+			}
+		}
+		this.listSorted = result;
+	}
+};
+
+// Line parser
+LineParser = function ( aoz, line, mode )
+{
+	this.aoz = aoz;
+	this.line = line;
+	this.position = 0;
+	this.mode = mode;
+	this.endOfLine = false;
+};
+/*
+LineParser.prototype.extractNextWord = function( throwError )
+{
+	var result =
+	{
+		type: 'undefined',
+		value: undefined
+	};
+
+	this.skipSpaces();
+	if ( this.endOfLine )
+		return result;
+	do
+	{
+		var c = this.extractNextChar();
+		if ( this.endOfLine )
+		{
+			this.endOfLine = false;
+			return result;
+		}
+
+		switch ( c )
+		{
+			if ( mode == 'md' )
+			{
+				if ( c == 32 || c == 9 && result != '' )
+					break;
+			}
+			else if ( mode == 'STOSanim' )
+			{
+				if ( c == '"' || c == "'" )
+				{
+					result.type = 'string';
+					result.value = this.aoz.utilities.extract( this.line, this.position - 1 );
+					this.position += this.aoz.utilities.extractString( this.line, this.position - 1, { toGet: 'parsedlength' } );
+				}
+				else if ( c == ',' || c == '(' || c == ')' )
+				{
+					result.type = 'separator';
+					result.value = c;
+				}
+				else if ( c >= "0" || c <= "9" || c == '-' )
+				{
+					result.type = this.aoz.utilities.extractNumber( this.line, this.position - 1, { toGet: 'type' } );
+					result.value = this.aoz.utilities.extractNumber( this.line, this.position - 1, { toGet: 'value' } );
+					this.position += this.aoz.utilities.extractString( this.line, this.position - 1, { toGet: 'parsedlength' } );
+				}
+				else if ( throwError )
+				{
+					throw throwError;
+				}
+			}
+			result += c;
+		}
+	} while( true );
+	return result;
+};
+*/
+LineParser.prototype.extractNextChar = function()
+{
+	if ( this.position.length < this.line.length )
+		return this.line.charAt( this.position++ );
+	this.endOfLine = true;
+	return '';
+};
+LineParser.prototype.get = function( type )
+{
+	return this.aoz.utilities.extractFromString( this.line, this.position, type );
+};
+LineParser.prototype.extract = function( type, throwError, options )
+{
+	var result = this.aoz.utilities.extractFromString( this.line, this.position, type, throwError, options );
+	this.position = Utilities.AOZTEMPRETURN_end_position;
+	this.endOfLine = ( this.position >= this.line.length );
+	return result;
+};
+LineParser.prototype.getToEndOfLine = function()
+{
+	if ( this.position.length < this.line.length )
+		return this.line.substring( this.position );
+	return '';
+};
+LineParser.prototype.skipSpaces = function()
+{
+	this.aoz.utilities.skipTheSpaces( this.line, this.position );
+	this.position = Utilities.AOZTEMPRETURN_end_position;
+	this.endOfLine = ( this.position >= this.line.length );
+}
